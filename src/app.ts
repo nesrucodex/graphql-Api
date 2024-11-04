@@ -11,19 +11,28 @@ const { ruruHTML } = require(path.join(
   "node_modules/ruru/dist/server.js"
 ));
 
+const USERS = `Build and Deploy a GraphQL API using NodeJS`
+  .split(" ")
+  .map((user, index) => ({ name: user, id: index + 1 }));
+
 const schema = buildSchema(`
    type Query {
-      hello: String
-      users: [String]
+      users: [User!]
+      user(id: Int!): User
+   }
+
+   type User {
+      id: Int!
+      name: String!
    }
 `);
 
 const rootResolver = {
-  hello: () => "Hello world from  graphql",
-  users: () =>
-    `Build and Deploy a GraphQL API using NodeJS (tutorial for beginners)`.split(
-      " "
-    ),
+  users: () => USERS,
+  user: (args: { id: Number }) => {
+    console.log({ args });
+    return USERS.find((user) => user.id === args.id);
+  },
 };
 
 // Init App
@@ -41,6 +50,7 @@ app.get("/", (_req, res) => {
     })
   );
 });
+
 app.all("/graphql", createHandler({ schema, rootValue: rootResolver }));
 
 export default app;
