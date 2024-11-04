@@ -4,6 +4,7 @@ import cors from "cors";
 import path from "path";
 import { buildSchema } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
+import db from "./libs/prisma-client";
 
 // Dynamically import the file directly from the file system
 const { ruruHTML } = require(path.join(
@@ -11,39 +12,6 @@ const { ruruHTML } = require(path.join(
   "node_modules/ruru/dist/server.js"
 ));
 
-const TITLES =
-  `HTTP 415 status code means Unsupported Media Type, which typically occurs when the server doesn't recognize the content type of the request`
-    .split(" ")
-    .map((title) => title.toUpperCase());
-
-const USERS = `Build and Deploy a GraphQL API using NodeJS`
-  .split(" ")
-  .map((user, index) => ({ name: user.toUpperCase(), id: index + 1 }));
-
-const COMMENTS = Array.from({ length: 3 }, (_, i) => i + 1).map((id) => ({
-  id,
-  user: USERS.at(Math.round(Math.random() * USERS.length)),
-  message: TITLES.slice(
-    Math.round(Math.random() * TITLES.length),
-    Math.round(Math.random() * TITLES.length)
-  ).join(" "),
-  createdAt: Date.now().toLocaleString(),
-}));
-
-const POSTS = Array.from({ length: 3 }, (_, i) => i + 1).map((id) => ({
-  id,
-  title: TITLES[id],
-  body: TITLES.join(" "),
-  likes: USERS.slice(
-    Math.round(Math.random() * USERS.length),
-    Math.round(Math.random() * USERS.length)
-  ),
-  createdAt: Date.now().toLocaleString(),
-  comments: COMMENTS.slice(
-    Math.round(Math.random() * COMMENTS.length),
-    Math.round(Math.random() * COMMENTS.length)
-  ),
-}));
 const schema = buildSchema(`
    type Query {
       users: [User!]
@@ -55,6 +23,7 @@ const schema = buildSchema(`
    type User {
       id: Int!
       name: String!
+      posts: [Post]!
    }
 
    type Post {
@@ -62,8 +31,8 @@ const schema = buildSchema(`
       title: String!
       body: String!
       createdAt: String!
-      likes: [User]
-      comments: [Comment]
+      likes: [User!]!
+      comments: [Comment!]!
    }
 
    type Comment {
@@ -75,12 +44,43 @@ const schema = buildSchema(`
 `);
 
 const rootResolver = {
-  users: () => USERS,
-  user: ({ id }: { id: Number }) => {
-    return USERS.find((user) => user.id === id);
+  users: async () => {
+    const users = await db.user.findMany();
+
+    return users;
   },
-  posts: () => POSTS,
-  post: ({ id }: { id: Number }) => POSTS.find((post) => post.id === id),
+  user: async ({ id }: { id: number }) => {
+    const user = await db.user.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    return user;
+  },
+  posts: async () => {
+    const posts = await db.post.findMany({
+      include: {
+        likes: {
+          include: { comments: true, posts: true },
+        },
+        comments: {
+          include: {
+            user: true,
+            post: true,
+          },
+        },
+      },
+    });
+
+    return posts;
+  },
+  post: async ({ id }: { id: number }) => {
+    const post = await db.post.findUnique({
+      where: { id },
+    });
+    return post;
+  },
 };
 
 // Init App
