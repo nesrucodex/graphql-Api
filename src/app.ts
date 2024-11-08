@@ -13,6 +13,11 @@ const { ruruHTML } = require(path.join(
 
 const yoga = createYoga({
   schema: GraphQL.schema,
+  context: ({ params }) => {
+    // In the context we could pass DB connection object that could be shared amongs elements.
+    console.log(`Operation name: ${params.operationName}`);
+    return params;
+  },
 });
 
 // Init App
