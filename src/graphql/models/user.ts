@@ -30,11 +30,11 @@ const resolvers = {
     users: async (_: any, __: {}, ctx: GraphQLContext) => {
       const user = ctx.user;
       if (!user)
-        throw new GraphQLError("You aren't authorized to delete a user.");
+        throw new GraphQLError("You aren't authorized to get users info.");
 
       const isAdmin = user.role === "ADMIN";
       if (!isAdmin)
-        throw new GraphQLError("You aren't admin to get users informations.");
+        throw new GraphQLError("You aren't admin to get users info.");
       const users = await ctx.prisma.user.findMany({
         include: {
           posts: true,
@@ -45,11 +45,11 @@ const resolvers = {
     user: async (_: any, args: { id: number }, ctx: GraphQLContext) => {
       const user = ctx.user;
       if (!user)
-        throw new GraphQLError("You aren't authorized to delete a user.");
+        throw new GraphQLError("You aren't authorized to get a user info.");
 
       const isAdmin = user.role === "ADMIN";
       if (!isAdmin)
-        throw new GraphQLError("You aren't admin to get users informations.");
+        throw new GraphQLError("You aren't admin to get user info.");
       const userData = await ctx.prisma.user.findUnique({
         where: { id: args.id },
         include: {

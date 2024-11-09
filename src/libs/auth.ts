@@ -10,6 +10,7 @@ const authenticateUser = async (
   request: Request
 ): Promise<User | null> => {
   const header = request.headers.get("Authorization");
+  console.log({ header });
   if (header !== null) {
     const token = header.split(" ")[1];
     const tokenPayload = verify(token, ENV.JWT_SECRET) as JwtPayload;
