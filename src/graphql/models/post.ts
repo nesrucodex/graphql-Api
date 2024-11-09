@@ -1,3 +1,4 @@
+import { GraphQLError } from "graphql";
 import { GraphQLContext } from "../context";
 
 const typeDefs = /* GraphQL */ `
@@ -10,8 +11,8 @@ const typeDefs = /* GraphQL */ `
     createPost(data: CreatePostDTO!): Post!
     updatePost(id: Int!, data: UpdatePostDTO): Post!
     deletePost(id: Int!): Post!
-    likePost(userId: Int!, postId: Int!): Post!
-    dislikePost(userId: Int!, postId: Int!): Post!
+    likePost(postId: Int!): Post!
+    dislikePost(postId: Int!): Post!
   }
 
   type Post {
@@ -37,7 +38,7 @@ const typeDefs = /* GraphQL */ `
 
 const resolvers = {
   Query: {
-    posts: async (parent: unknown, args: {}, ctx: GraphQLContext) => {
+    posts: async (_: unknown, __: {}, ctx: GraphQLContext) => {
       const posts = await ctx.prisma.post.findMany({
         include: {
           likes: {
@@ -54,11 +55,7 @@ const resolvers = {
 
       return posts;
     },
-    post: async (
-      parent: unknown,
-      args: { id: number },
-      ctx: GraphQLContext
-    ) => {
+    post: async (_: unknown, args: { id: number }, ctx: GraphQLContext) => {
       const post = await ctx.prisma.post.findUnique({
         where: { id: args.id },
       });
@@ -71,26 +68,21 @@ const resolvers = {
       _: any,
       dto: {
         data: {
-          authorId: number;
           title: string;
           body: string;
         };
       },
       ctx: GraphQLContext
     ) => {
+      if (!ctx.user)
+        throw new GraphQLError("User isn't authorized to create a post.");
       const { data } = dto;
-      const user = await ctx.prisma.user.findUnique({
-        where: {
-          id: data.authorId,
-        },
-      });
-      if (!user)
-        throw new Error("Author with the provide author ID not found!");
+      const author = ctx.user;
       const post = await ctx.prisma.post.create({
         data: {
           body: data.body,
           title: data.title,
-          authorId: data.authorId,
+          authorId: author.id,
         },
         include: {
           author: true,
@@ -112,6 +104,8 @@ const resolvers = {
       },
       ctx: GraphQLContext
     ) => {
+      if (!ctx.user)
+        throw new GraphQLError("User isn't authorized to update a post.");
       const { id, data } = dto;
       const updatePost = await ctx.prisma.post.update({
         where: {
@@ -130,6 +124,8 @@ const resolvers = {
       return updatePost;
     },
     deletePost: async (_: any, dto: { id: number }, ctx: GraphQLContext) => {
+      if (!ctx.user)
+        throw new GraphQLError("User isn't authorized to delete a post.");
       const deletedPost = await ctx.prisma.post.delete({
         where: {
           id: dto.id,
@@ -141,27 +137,22 @@ const resolvers = {
         },
       });
 
-      if (!deletedPost) throw new Error("Post with the provide not found!");
+      if (!deletedPost)
+        throw new GraphQLError("Post with the provide not found!");
 
       return deletedPost;
     },
     likePost: async (
       _: any,
       dto: {
-        userId: number;
         postId: number;
       },
       ctx: GraphQLContext
     ) => {
-      const { userId, postId } = dto;
-
-      const user = await ctx.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-      });
-
-      if (!user) throw new Error("User not found with the provide Id!");
+      const { postId } = dto;
+      const user = ctx.user;
+      if (!user)
+        throw new GraphQLError("User isn't authorized to delete a post.");
 
       const post = await ctx.prisma.post.update({
         where: {
@@ -184,20 +175,14 @@ const resolvers = {
     dislikePost: async (
       _: any,
       dto: {
-        userId: number;
         postId: number;
       },
       ctx: GraphQLContext
     ) => {
-      const { userId, postId } = dto;
-
-      const user = await ctx.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-      });
-
-      if (!user) throw new Error("User not found with the provide Id!");
+      const { postId } = dto;
+      const user = ctx.user;
+      if (!user)
+        throw new GraphQLError("User isn't authorized to delete a post.");
 
       const post = await ctx.prisma.post.update({
         where: {

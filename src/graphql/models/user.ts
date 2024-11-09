@@ -1,5 +1,6 @@
 import { User } from "@prisma/client";
 import { GraphQLContext } from "../context";
+import { GraphQLError } from "graphql";
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -26,7 +27,14 @@ const typeDefs = /* GraphQL */ `
 
 const resolvers = {
   Query: {
-    users: async (parent: any, args: {}, ctx: GraphQLContext) => {
+    users: async (_: any, __: {}, ctx: GraphQLContext) => {
+      const user = ctx.user;
+      if (!user)
+        throw new GraphQLError("You aren't authorized to delete a user.");
+
+      const isAdmin = user.role === "ADMIN";
+      if (!isAdmin)
+        throw new GraphQLError("You aren't admin to get users informations.");
       const users = await ctx.prisma.user.findMany({
         include: {
           posts: true,
@@ -34,8 +42,15 @@ const resolvers = {
       });
       return users;
     },
-    user: async (parent: any, args: { id: number }, ctx: GraphQLContext) => {
-      const user = await ctx.prisma.user.findUnique({
+    user: async (_: any, args: { id: number }, ctx: GraphQLContext) => {
+      const user = ctx.user;
+      if (!user)
+        throw new GraphQLError("You aren't authorized to delete a user.");
+
+      const isAdmin = user.role === "ADMIN";
+      if (!isAdmin)
+        throw new GraphQLError("You aren't admin to get users informations.");
+      const userData = await ctx.prisma.user.findUnique({
         where: { id: args.id },
         include: {
           comments: true,
@@ -43,7 +58,7 @@ const resolvers = {
         },
       });
 
-      return user;
+      return userData;
     },
   },
   User: {
@@ -53,6 +68,13 @@ const resolvers = {
   },
   Mutation: {
     deleteUser: async (_: any, dto: { id: number }, ctx: GraphQLContext) => {
+      const user = ctx.user;
+      if (!user)
+        throw new GraphQLError("You aren't authorized to delete a user.");
+      const isAdmin = user.role === "ADMIN";
+      if (!isAdmin)
+        throw new GraphQLError("You aren't admin to delete a user.");
+
       const deletedUser = await ctx.prisma.user.delete({
         where: {
           id: dto.id,
@@ -75,19 +97,26 @@ const resolvers = {
       dto: { id: number; data: { name: string } },
       ctx: GraphQLContext
     ) => {
+      const user = ctx.user;
+      if (!user)
+        throw new GraphQLError("You aren't authorized to update a user info.");
+      const isAdmin = user.role === "ADMIN";
+      if (!isAdmin)
+        throw new GraphQLError("You aren't admin to update a user info.");
+
       const {
         id,
         data: { name },
       } = dto;
       if (!name || !name.trim())
         throw new Error("Invalid user input, name field is required!");
-      const user = await ctx.prisma.user.findUnique({
+      const userToBeUpdated = await ctx.prisma.user.findUnique({
         where: {
           id: id,
         },
       });
 
-      if (!user) throw new Error("User not found!");
+      if (!userToBeUpdated) throw new Error("User not found!");
 
       const updatedUser = await ctx.prisma.user.update({
         where: {

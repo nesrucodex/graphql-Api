@@ -1,4 +1,4 @@
-import db from "../../libs/prisma-client";
+import { GraphQLError } from "graphql";
 import { GraphQLContext } from "../context";
 import post from "./post";
 
@@ -16,7 +16,6 @@ const typeDefs = /* GraphQL */ `
   }
 
   input CreateCommentDTO {
-    userId: Int!
     postId: Int!
     message: String!
   }
@@ -29,31 +28,24 @@ const resolvers = {
       _: any,
       dto: {
         data: {
-          userId: number;
           postId: number;
           message: string;
         };
       },
       ctx: GraphQLContext
     ) => {
-      const { userId, message, postId } = dto.data;
+      if (!ctx.user)
+        throw new GraphQLError("You aren't authorized to comment on a post.");
+      const { message, postId } = dto.data;
       if (!message || !message.trim())
         throw new Error("Message field is required to create a comment.");
-
-      const user = await ctx.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-      });
-
-      if (!user) throw new Error("User not found with the provided Id!");
 
       const post = await ctx.prisma.post.update({
         where: { id: postId },
         data: {
           comments: {
             create: {
-              userId,
+              userId: ctx.user.id,
               message: message,
             },
           },
@@ -76,6 +68,8 @@ const resolvers = {
       },
       ctx: GraphQLContext
     ) => {
+      if (!ctx.user)
+        throw new GraphQLError("You aren't authorized to delete a comment.");
       const { id } = dto;
 
       const deletedPost = await ctx.prisma.post.delete({
