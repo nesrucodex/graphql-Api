@@ -1,4 +1,4 @@
-import db from "../../libs/prisma-client";
+import { GraphQLContext } from "../context";
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -37,8 +37,8 @@ const typeDefs = /* GraphQL */ `
 
 const resolvers = {
   Query: {
-    posts: async () => {
-      const posts = await db.post.findMany({
+    posts: async (parent: unknown, args: {}, ctx: GraphQLContext) => {
+      const posts = await ctx.prisma.post.findMany({
         include: {
           likes: {
             include: { comments: true, posts: true },
@@ -54,9 +54,13 @@ const resolvers = {
 
       return posts;
     },
-    post: async ({ id }: { id: number }) => {
-      const post = await db.post.findUnique({
-        where: { id },
+    post: async (
+      parent: unknown,
+      args: { id: number },
+      ctx: GraphQLContext
+    ) => {
+      const post = await ctx.prisma.post.findUnique({
+        where: { id: args.id },
       });
       return post;
     },
@@ -71,17 +75,18 @@ const resolvers = {
           title: string;
           body: string;
         };
-      }
+      },
+      ctx: GraphQLContext
     ) => {
       const { data } = dto;
-      const user = await db.user.findUnique({
+      const user = await ctx.prisma.user.findUnique({
         where: {
           id: data.authorId,
         },
       });
       if (!user)
         throw new Error("Author with the provide author ID not found!");
-      const post = await db.post.create({
+      const post = await ctx.prisma.post.create({
         data: {
           body: data.body,
           title: data.title,
@@ -104,10 +109,11 @@ const resolvers = {
           title: string;
           body: string;
         };
-      }
+      },
+      ctx: GraphQLContext
     ) => {
       const { id, data } = dto;
-      const updatePost = await db.post.update({
+      const updatePost = await ctx.prisma.post.update({
         where: {
           id,
         },
@@ -123,8 +129,8 @@ const resolvers = {
 
       return updatePost;
     },
-    deletePost: async (_: any, dto: { id: number }) => {
-      const deletedPost = await db.post.delete({
+    deletePost: async (_: any, dto: { id: number }, ctx: GraphQLContext) => {
+      const deletedPost = await ctx.prisma.post.delete({
         where: {
           id: dto.id,
         },
@@ -144,11 +150,12 @@ const resolvers = {
       dto: {
         userId: number;
         postId: number;
-      }
+      },
+      ctx: GraphQLContext
     ) => {
       const { userId, postId } = dto;
 
-      const user = await db.user.findUnique({
+      const user = await ctx.prisma.user.findUnique({
         where: {
           id: userId,
         },
@@ -156,15 +163,13 @@ const resolvers = {
 
       if (!user) throw new Error("User not found with the provide Id!");
 
-      const post = await db.post.update({
+      const post = await ctx.prisma.post.update({
         where: {
           id: postId,
         },
         data: {
           likes: {
-            create: {
-              name: user.name,
-            },
+            connect: user,
           },
         },
         include: {
@@ -181,11 +186,12 @@ const resolvers = {
       dto: {
         userId: number;
         postId: number;
-      }
+      },
+      ctx: GraphQLContext
     ) => {
       const { userId, postId } = dto;
 
-      const user = await db.user.findUnique({
+      const user = await ctx.prisma.user.findUnique({
         where: {
           id: userId,
         },
@@ -193,7 +199,7 @@ const resolvers = {
 
       if (!user) throw new Error("User not found with the provide Id!");
 
-      const post = await db.post.update({
+      const post = await ctx.prisma.post.update({
         where: {
           id: postId,
         },

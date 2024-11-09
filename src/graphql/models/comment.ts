@@ -1,4 +1,5 @@
 import db from "../../libs/prisma-client";
+import { GraphQLContext } from "../context";
 import post from "./post";
 
 const typeDefs = /* GraphQL */ `
@@ -32,13 +33,14 @@ const resolvers = {
           postId: number;
           message: string;
         };
-      }
+      },
+      ctx: GraphQLContext
     ) => {
       const { userId, message, postId } = dto.data;
       if (!message || !message.trim())
         throw new Error("Message field is required to create a comment.");
 
-      const user = await db.user.findUnique({
+      const user = await ctx.prisma.user.findUnique({
         where: {
           id: userId,
         },
@@ -46,7 +48,7 @@ const resolvers = {
 
       if (!user) throw new Error("User not found with the provided Id!");
 
-      const post = await db.post.update({
+      const post = await ctx.prisma.post.update({
         where: { id: postId },
         data: {
           comments: {
@@ -71,11 +73,12 @@ const resolvers = {
       _: any,
       dto: {
         id: number;
-      }
+      },
+      ctx: GraphQLContext
     ) => {
       const { id } = dto;
 
-      const deletedPost = await db.post.delete({
+      const deletedPost = await ctx.prisma.post.delete({
         where: { id },
         include: {
           author: true,

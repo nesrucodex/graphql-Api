@@ -1,7 +1,8 @@
 -- CreateTable
 CREATE TABLE "User" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "name" TEXT NOT NULL
+    "name" TEXT NOT NULL,
+    "password" TEXT NOT NULL
 );
 
 -- CreateTable
@@ -20,19 +21,24 @@ CREATE TABLE "Post" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "title" TEXT NOT NULL,
     "body" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "authorId" INTEGER NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Post_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "_PostToUser" (
+CREATE TABLE "_favorite" (
     "A" INTEGER NOT NULL,
     "B" INTEGER NOT NULL,
-    CONSTRAINT "_PostToUser_A_fkey" FOREIGN KEY ("A") REFERENCES "Post" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "_PostToUser_B_fkey" FOREIGN KEY ("B") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "_favorite_A_fkey" FOREIGN KEY ("A") REFERENCES "Post" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "_favorite_B_fkey" FOREIGN KEY ("B") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_PostToUser_AB_unique" ON "_PostToUser"("A", "B");
+CREATE UNIQUE INDEX "User_name_key" ON "User"("name");
 
 -- CreateIndex
-CREATE INDEX "_PostToUser_B_index" ON "_PostToUser"("B");
+CREATE UNIQUE INDEX "_favorite_AB_unique" ON "_favorite"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_favorite_B_index" ON "_favorite"("B");

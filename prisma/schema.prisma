@@ -8,8 +8,10 @@ datasource db {
 }
 
 model User {
-  id             Int       @id @default(autoincrement())
-  name           String
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  password String
+
   comments       Comment[]
   posts          Post[]    @relation("author")
   favorite_posts Post[]    @relation("favorite")

@@ -1,3 +1,4 @@
 import passwordCrypt from "./password-crypt";
+import Auth from "./auth";
 
-export { passwordCrypt };
+export { passwordCrypt, Auth };

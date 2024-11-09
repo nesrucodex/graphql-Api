@@ -1,4 +1,5 @@
-import db from "../../libs/prisma-client";
+import { User } from "@prisma/client";
+import { GraphQLContext } from "../context";
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -7,13 +8,8 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    createUser(data: CreateUserDTO!): User
     deleteUser(id: Int!): User
     updateUser(id: Int!, data: UpdateUserDTO): User
-  }
-
-  input CreateUserDTO {
-    name: String!
   }
 
   input UpdateUserDTO {
@@ -23,23 +19,24 @@ const typeDefs = /* GraphQL */ `
   type User {
     id: Int!
     name: String!
+    password: String!
     posts: [Post]!
   }
 `;
 
 const resolvers = {
   Query: {
-    users: async () => {
-      const users = await db.user.findMany({
+    users: async (parent: any, args: {}, ctx: GraphQLContext) => {
+      const users = await ctx.prisma.user.findMany({
         include: {
           posts: true,
         },
       });
       return users;
     },
-    user: async ({ id }: { id: number }) => {
-      const user = await db.user.findUnique({
-        where: { id },
+    user: async (parent: any, args: { id: number }, ctx: GraphQLContext) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: args.id },
         include: {
           comments: true,
           posts: true,
@@ -50,30 +47,13 @@ const resolvers = {
     },
   },
   User: {
-    name: (obj: { name: string }) => {
-      return obj.name.trim().toUpperCase();
+    name: (obj: User) => {
+      return obj.name.trim();
     },
   },
   Mutation: {
-    createUser: async (_: any, dto: { data: { name: string } }) => {
-      const newUser = await db.user.create({
-        data: {
-          name: dto.data.name,
-        },
-        include: {
-          posts: {
-            include: {
-              comments: true,
-              likes: true,
-            },
-          },
-          comments: true,
-        },
-      });
-      return newUser;
-    },
-    deleteUser: async (_: any, dto: { id: number }) => {
-      const deletedUser = await db.user.delete({
+    deleteUser: async (_: any, dto: { id: number }, ctx: GraphQLContext) => {
+      const deletedUser = await ctx.prisma.user.delete({
         where: {
           id: dto.id,
         },
@@ -90,14 +70,18 @@ const resolvers = {
 
       return deletedUser;
     },
-    updateUser: async (_: any, dto: { id: number; data: { name: string } }) => {
+    updateUser: async (
+      _: any,
+      dto: { id: number; data: { name: string } },
+      ctx: GraphQLContext
+    ) => {
       const {
         id,
         data: { name },
       } = dto;
       if (!name || !name.trim())
         throw new Error("Invalid user input, name field is required!");
-      const user = await db.user.findUnique({
+      const user = await ctx.prisma.user.findUnique({
         where: {
           id: id,
         },
@@ -105,7 +89,7 @@ const resolvers = {
 
       if (!user) throw new Error("User not found!");
 
-      const updatedUser = await db.user.update({
+      const updatedUser = await ctx.prisma.user.update({
         where: {
           id,
         },

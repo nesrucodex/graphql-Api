@@ -4,6 +4,7 @@ import cors from "cors";
 import path from "path";
 import { createYoga } from "graphql-yoga";
 import GraphQL from "./graphql";
+import createContext from "./graphql/context";
 
 // Dynamically import the file directly from the file system
 const { ruruHTML } = require(path.join(
@@ -13,11 +14,7 @@ const { ruruHTML } = require(path.join(
 
 const yoga = createYoga({
   schema: GraphQL.schema,
-  context: ({ params }) => {
-    // In the context we could pass DB connection object that could be shared amongs elements.
-    console.log(`Operation name: ${params.operationName}`);
-    return params;
-  },
+  context: createContext,
 });
 
 // Init App
@@ -35,7 +32,7 @@ app.get("/", (_req, res) => {
     })
   );
 });
-
+// ts-ignore
 app.post("/graphql", yoga);
 
 export default app;
